@@ -1,6 +1,7 @@
 package com.example.nosus
 
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
@@ -28,23 +29,37 @@ class MainActivity : AppCompatActivity() {
 
     private fun scanInstalledApps() {
         val pm = packageManager
-        val packages = pm.getInstalledApplications(0)
-            .filter { (it.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 } // Exclude system apps
+        val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
 
-        appList = packages.map { it.packageName }
-        recyclerView.adapter = AppAdapter(appList) { packageName ->
-            checkAppSafety(packageName, pm)
+        // Filter only user-installed apps (excluding system apps)
+        appList = packages
+            .filter { (it.flags and ApplicationInfo.FLAG_SYSTEM) == 0 } // Excludes system apps
+            .map { it.packageName }
+
+        recyclerView.adapter = AppAdapter(appList, packageManager) { packageName ->
+            checkAppSafety(packageName, packageManager)
         }
     }
+
+
+
 
     private fun checkAppSafety(packageName: String, pm: PackageManager) {
         val hash = SecurityUtils.getAppSha256(packageName, pm)
 
-        if (hash != null && SecurityUtils.checkAppSafety(hash)) {
-            Toast.makeText(this, "$packageName is MALICIOUS!", Toast.LENGTH_LONG).show()
-            promptUninstall(packageName)
+        if (hash != null) {
+            SecurityUtils.checkAppSafety(hash) { isMalicious ->
+                runOnUiThread {
+                    if (isMalicious) {
+                        Toast.makeText(this, "$packageName is MALICIOUS!", Toast.LENGTH_LONG).show()
+                        promptUninstall(packageName)
+                    } else {
+                        Toast.makeText(this, "$packageName is SAFE!", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
         } else {
-            Toast.makeText(this, "$packageName is SAFE!", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Failed to get hash for $packageName", Toast.LENGTH_LONG).show()
         }
     }
 
