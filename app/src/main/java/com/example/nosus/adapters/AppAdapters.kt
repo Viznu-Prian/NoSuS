@@ -13,8 +13,9 @@ import com.example.nosus.AppInfo
 import com.example.nosus.R
 
 class AppAdapter(
-    private val apps: List<AppInfo>,
-    private val onAppClick: (String) -> Unit
+    private val apps: MutableList<AppInfo>,
+    private val onAppClick: (String) -> Unit,
+    private val onAppUninstall: (String) -> Unit
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     override fun getItemViewType(position: Int): Int {
@@ -34,15 +35,18 @@ class AppAdapter(
         if (holder is MaliciousAppViewHolder) {
             holder.appName.text = app.appName
             holder.appIcon.setImageDrawable(app.appIcon)
-
             holder.btnUninstall.setOnClickListener {
-                val intent = Intent(Intent.ACTION_DELETE)
-                intent.data = Uri.parse("package:${app.packageName}")
-                holder.itemView.context.startActivity(intent)
+                onAppUninstall(app.packageName)
+            }
+            holder.itemView.setOnClickListener {
+                onAppClick(app.appName)
             }
         } else if (holder is SafeAppViewHolder) {
             holder.appName.text = app.appName
             holder.appIcon.setImageDrawable(app.appIcon)
+            holder.itemView.setOnClickListener {
+                onAppClick(app.appName)
+            }
         }
     }
 
